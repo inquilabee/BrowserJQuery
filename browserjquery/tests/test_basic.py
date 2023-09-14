@@ -2,7 +2,7 @@ import time
 
 from selenium.webdriver import Chrome
 
-from browserjquery.jquery import BrowserJQuery
+from browserjquery import BrowserJQuery
 
 
 def test_basic_function():
@@ -15,3 +15,7 @@ def test_basic_function():
     jquery = BrowserJQuery(driver)
 
     assert jquery(".stream-item"), "BrowserQuery is not working"
+
+    assert jquery.document, "BrowserQuery is not working"
+
+    assert jquery.find(".stream-item a"), "BrowserQuery is not working"
