@@ -10,7 +10,7 @@ Get started quickly by installing **BrowserJQuery** from PyPI:
 pip install browserjquery
 ```
 
-# Usage
+# General Usage
 
 Here's how you can harness the power of **BrowserJQuery** in your Selenium scripts:
 

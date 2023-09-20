@@ -11,7 +11,6 @@
 
 README.md
 browserjquery.md
-modules.md
 ```
 
 # Indices and tables
