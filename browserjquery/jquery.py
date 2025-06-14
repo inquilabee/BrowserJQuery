@@ -131,6 +131,42 @@ class BrowserJQuery:
         """
         return self.find(*args, **kwargs)
 
+    def __getattr__(self, name: str):
+        """Redirect attribute access to the default element if not found in this class.
+
+        Args:
+            name: Name of the attribute to get.
+
+        Returns:
+            The attribute from the default element.
+
+        Raises:
+            AttributeError: If the attribute is not found in either this class or the default element.
+        """
+        if self.default_element is None:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+        # Try to get the attribute from the default element
+        try:
+            attr = getattr(self.default_element, name)
+            # If it's a method, wrap it to maintain the BrowserJQuery context
+            if callable(attr):
+
+                def wrapper(*args, **kwargs):
+                    result = attr(*args, **kwargs)
+                    # If the result is a WebElement, wrap it in a new BrowserJQuery instance
+                    if hasattr(result, "tag_name"):  # Check if it's a WebElement
+                        return BrowserJQuery(self.driver, default_element=result)
+                    # If the result is a list of WebElements, wrap each element
+                    elif isinstance(result, list) and result and hasattr(result[0], "tag_name"):
+                        return [BrowserJQuery(self.driver, default_element=item) for item in result]
+                    return result
+
+                return wrapper
+            return attr
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
     # Core/Initialization methods
     def ensure_jquery(self):
         """Ensures that jQuery is injected into the page.
