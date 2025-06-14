@@ -8,15 +8,17 @@ from selenium import webdriver
 from selenium.webdriver.remote import webelement
 
 from browserjquery import jquery_scripts, settings
-from browserjquery.text_queries import TextQuery
 
 logger = settings.getLogger(__name__)
 
 ResultType = Union[list[webelement.WebElement], webelement.WebElement, None]
+WrappedResultType = Union[list[Union["BrowserJQuery", str]], "BrowserJQuery", str, None]
 
 
-def prepare_result(func: Callable[..., ResultType]) -> Callable[..., ResultType]:
+def prepare_result(func: Callable[..., ResultType]) -> Callable[..., WrappedResultType]:
     """Decorator to prepare query results based on whether first match is requested.
+    If result is a WebElement or list of WebElements, wraps it in a new BrowserJQuery instance.
+    Text elements are left as is.
 
     Args:
         func: The function to decorate.
@@ -26,23 +28,32 @@ def prepare_result(func: Callable[..., ResultType]) -> Callable[..., ResultType]
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> ResultType:
-        first = kwargs.pop("first_match", False)
-        result = func(*args, **kwargs)
+    def wrapper(self: "BrowserJQuery", *args: Any, **kwargs: Any) -> WrappedResultType:
+        first = kwargs.get("first_match", False)
+        result = func(self, *args, **kwargs)
 
         if isinstance(result, list):
             if first:
-                return result[0] if result else None
-            return result
+                result = result[0] if result else None
+            else:
+                # Wrap each element in the list with BrowserJQuery
+                return [
+                    BrowserJQuery(self.driver, default_element=item) if not isinstance(item, str) else item
+                    for item in result
+                ]
+
+        if result is not None and not isinstance(result, str):
+            return BrowserJQuery(self.driver, default_element=result)
+
         return result
 
     return wrapper
 
 
-class BrowserJQuery(TextQuery):
+class BrowserJQuery:
     """Main class for jQuery-based browser interactions."""
 
-    def __init__(self, driver: webdriver.Chrome | webdriver.Firefox):
+    def __init__(self, driver: webdriver.Chrome | webdriver.Firefox, default_element=None):
         """Initialize BrowserJQuery with a webdriver instance.
 
         Args:
@@ -50,6 +61,7 @@ class BrowserJQuery(TextQuery):
         """
         self.driver = driver
         self.ensure_jquery()
+        self.default_element = default_element or self.document
 
     def __call__(self, *args, **kwargs):
         """Allow the class instance to be called directly, equivalent to find().
@@ -59,6 +71,7 @@ class BrowserJQuery(TextQuery):
         """
         return self.find(*args, **kwargs)
 
+    # Core/Initialization methods
     def ensure_jquery(self):
         """Ensures that jQuery is injected into the page.
 
@@ -67,50 +80,6 @@ class BrowserJQuery(TextQuery):
         """
         if not self.is_jquery_injected:
             self.inject_jquery()
-
-    def execute(self, script, *args):
-        """Execute JavaScript on the page.
-
-        Args:
-            script: The JavaScript code to execute.
-            *args: Additional arguments to pass to the script.
-
-        Returns:
-            The result of the JavaScript execution.
-        """
-        return self.driver.execute_script(script, *args)
-
-    def query(self, script: str, element: webelement.WebElement, *args):
-        """Execute jQuery script on a specific element.
-
-        Args:
-            script: The jQuery script to execute.
-            element: The WebElement to execute the script on.
-            *args: Additional arguments to pass to the script.
-
-        Returns:
-            The result of the jQuery script execution.
-        """
-        logger.info(f"Executing script : {script} on element: {element}")
-        return self.execute(script, element, *args)
-
-    @property
-    def document(self):
-        """Get the document element wrapped in jQuery.
-
-        Returns:
-            The document element as a jQuery object.
-        """
-        return self.execute(jquery_scripts.DOCUMENT_QUERY)
-
-    @property
-    def page_html(self) -> str:
-        """Get the complete HTML of the current page.
-
-        Returns:
-            str: The HTML content of the page.
-        """
-        return self.execute(jquery_scripts.PAGE_HTML)
 
     def inject_jquery(self, by: str = "file", wait: int = 5) -> bool:
         """Inject jQuery into the current page.
@@ -157,165 +126,113 @@ class BrowserJQuery(TextQuery):
             return True
         return False
 
+    # Document/Page methods
+    @property
+    def document(self):
+        """Get the document element wrapped in jQuery.
+
+        Returns:
+            The document element as a jQuery object.
+        """
+        return self.execute(jquery_scripts.DOCUMENT_QUERY)
+
+    @property
+    def page_html(self) -> str:
+        """Get the complete HTML of the current page.
+
+        Returns:
+            str: The HTML content of the page.
+        """
+        return self.execute(jquery_scripts.PAGE_HTML)
+
+    # Core execution methods
+    def execute(self, script, *args, **kwargs):
+        """Execute JavaScript on the page.
+
+        Args:
+            script: The JavaScript code to execute.
+            *args: Additional arguments to pass to the script.
+
+        Returns:
+            The result of the JavaScript execution.
+        """
+        return self.driver.execute_script(script, *args, **kwargs)
+
+    def query(self, script: str, element: webelement.WebElement | None = None, *args, **kwargs):
+        """Execute jQuery script on an element.
+
+        Args:
+            script: The jQuery script to execute.
+            element: The WebElement to execute the script on. If None, uses default_element.
+            *args: Additional arguments to pass to the script.
+            **kwargs: Additional keyword arguments. Note: first_match is handled separately.
+
+        Returns:
+            The result of the jQuery script execution.
+        """
+        element = element or self.default_element
+        logger.info(f"Executing script : {script} on element: {element}")
+        # Create a copy of kwargs without first_match for execute_script
+        script_kwargs = {k: v for k, v in kwargs.items() if k != "first_match"}
+        return self.execute(script, element, *args, **script_kwargs)
+
+    # Element finding methods
     @prepare_result
     def find(
-        self, selector: str, element: webelement.WebElement | None = None, *, first_match: bool = False
+        self, selector: str, *, first_match: bool = False
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
         """Find elements using jQuery selector.
 
         Args:
             selector: jQuery selector to find elements.
-            element: Optional element to search within. If None, searches entire document.
             first_match: Whether to return only the first match.
 
         Returns:
             Either a single WebElement, a list of WebElements, or None if no matches found.
         """
         first_match = first_match or selector.startswith("#")
-        element = element or self.document
-        if element is None:
-            return None
         method = ".first()" if first_match else ""
-
         return self.query(
             script=jquery_scripts.FIND_ELEMENTS.format(selector=selector, method=method),
-            element=element,
         )
 
     @prepare_result
-    def find_closest_ancestor(self, selector: str, element: webelement.WebElement) -> webelement.WebElement | None:
+    def find_closest_ancestor(self, selector: str) -> webelement.WebElement | None:
         """Find the closest ancestor matching the selector.
 
         Args:
             selector: jQuery selector to match ancestor.
-            element: Element to start search from.
 
         Returns:
             The closest matching ancestor WebElement or None if not found.
         """
-        return self.query(script=jquery_scripts.GET_CLOSEST.format(selector=selector), element=element)
+        return self.query(script=jquery_scripts.GET_CLOSEST.format(selector=selector))
 
-    def has_class(self, element: webelement.WebElement, class_name: str) -> bool:
-        """Check if element has a specific class.
-
-        Args:
-            element: Element to check.
-            class_name: Class name to look for.
-
-        Returns:
-            bool: True if element has the class, False otherwise.
-        """
-        return self.query(
-            script=jquery_scripts.HAS_CLASS.format(class_name=class_name),
-            element=element,
-        )
-
-    def parent(self, element: webelement.WebElement) -> webelement.WebElement:
+    # Element traversal methods
+    def parent(self) -> webelement.WebElement:
         """Get the parent element.
-
-        Args:
-            element: Element to get parent of.
 
         Returns:
             The parent WebElement.
         """
         return self.query(
             script=jquery_scripts.GET_PARENT,
-            element=element,
         )
 
-    def parents(self, element: webelement.WebElement) -> list[webelement.WebElement]:
+    def parents(self) -> list[webelement.WebElement]:
         """Get all parent elements.
-
-        Args:
-            element: Element to get parents of.
 
         Returns:
             List of parent WebElements.
         """
         return self.query(
             script=jquery_scripts.GET_PARENTS,
-            element=element,
         )
 
-    def matches_selector(self, element: webelement.WebElement, selector: str) -> bool:
-        """Check if element matches a selector.
-
-        Args:
-            element: Element to check.
-            selector: jQuery selector to match against.
-
-        Returns:
-            bool: True if element matches selector, False otherwise.
-        """
-        return self.query(
-            script=jquery_scripts.MATCHES_SELECTOR.format(selector=selector),
-            element=element,
-        )
-
-    def has(self, element: webelement.WebElement, selector: str) -> bool:
-        """Check if element has descendants matching selector.
-
-        Args:
-            element: Element to check.
-            selector: jQuery selector to match descendants.
-
-        Returns:
-            bool: True if element has matching descendants, False otherwise.
-        """
-        return self.query(
-            script=jquery_scripts.HAS_DESCENDANTS.format(selector=selector),
-            element=element,
-        )
-
-    def attr(self, element: webelement.WebElement, attribute_name: str) -> str | None:
-        """Get attribute value of element.
-
-        Args:
-            element: Element to get attribute from.
-            attribute_name: Name of the attribute.
-
-        Returns:
-            The attribute value or None if not found.
-        """
-        return self.query(
-            script=jquery_scripts.GET_ATTR.format(attribute_name=attribute_name),
-            element=element,
-        )
-
-    def text(self, element: webelement.WebElement) -> str:
-        """Get text content of element.
-
-        Args:
-            element: Element to get text from.
-
-        Returns:
-            The text content of the element.
-        """
-        return self.query(
-            script=jquery_scripts.GET_TEXT,
-            element=element,
-        )
-
-    def html(self, element: webelement.WebElement) -> str:
-        """Get HTML content of element.
-
-        Args:
-            element: Element to get HTML from.
-
-        Returns:
-            The HTML content of the element.
-        """
-        return self.query(
-            script=jquery_scripts.GET_HTML,
-            element=element,
-        )
-
-    def children(self, element: webelement.WebElement, selector: str | None = None) -> list[webelement.WebElement]:
+    def children(self, selector: str | None = None) -> list[webelement.WebElement]:
         """Get direct children of element.
 
         Args:
-            element: Element to get children from.
             selector: Optional selector to filter children.
 
         Returns:
@@ -324,14 +241,12 @@ class BrowserJQuery(TextQuery):
         script = jquery_scripts.GET_CHILDREN.format(selector=selector) if selector else jquery_scripts.GET_CHILDREN_ALL
         return self.query(
             script=script,
-            element=element,
         )
 
-    def siblings(self, element: webelement.WebElement, selector: str | None = None) -> list[webelement.WebElement]:
+    def siblings(self, selector: str | None = None) -> list[webelement.WebElement]:
         """Get sibling elements.
 
         Args:
-            element: Element to get siblings of.
             selector: Optional selector to filter siblings.
 
         Returns:
@@ -340,85 +255,243 @@ class BrowserJQuery(TextQuery):
         script = jquery_scripts.GET_SIBLINGS.format(selector=selector) if selector else jquery_scripts.GET_SIBLINGS_ALL
         return self.query(
             script=script,
-            element=element,
         )
 
     @prepare_result
-    def next(
-        self, element: webelement.WebElement, selector: str | None = None
-    ) -> list[webelement.WebElement] | webelement.WebElement | None:
+    def next(self, selector: str | None = None, first_match: bool = True) -> webelement.WebElement | None:
         """Get next sibling element.
 
         Args:
-            element: Element to get next sibling of.
             selector: Optional selector to filter next sibling.
+            first_match: Whether to return only the first match (default: True).
 
         Returns:
-            Either a single WebElement, a list of WebElements, or None if not found.
+            The next sibling WebElement or None if not found.
         """
         script = jquery_scripts.GET_NEXT.format(selector=selector) if selector else jquery_scripts.GET_NEXT_ALL
         return self.query(
             script=script,
-            element=element,
+            first_match=first_match,
         )
 
     @prepare_result
-    def prev(
-        self, element: webelement.WebElement, selector: str | None = None
-    ) -> list[webelement.WebElement] | webelement.WebElement | None:
+    def prev(self, selector: str | None = None, first_match: bool = True) -> webelement.WebElement | None:
         """Get previous sibling element.
 
         Args:
-            element: Element to get previous sibling of.
             selector: Optional selector to filter previous sibling.
+            first_match: Whether to return only the first match (default: True).
 
         Returns:
-            Either a single WebElement, a list of WebElements, or None if not found.
+            The previous sibling WebElement or None if not found.
         """
         script = jquery_scripts.GET_PREV.format(selector=selector) if selector else jquery_scripts.GET_PREV_ALL
         return self.query(
             script=script,
-            element=element,
+            first_match=first_match,
         )
 
-    def is_visible(self, element: webelement.WebElement) -> bool:
-        """Check if element is visible.
+    def items(self) -> list[webelement.WebElement]:
+        """Get all child elements of the default element.
+
+        Returns:
+            List of child WebElements.
+        """
+        return self.query(
+            script=jquery_scripts.GET_CHILDREN_ALL,
+        )
+
+    @prepare_result
+    def first(self) -> webelement.WebElement | None:
+        """Get the first child element of the default element.
+
+        Returns:
+            The first child WebElement or None if no children exist.
+        """
+        return self.query(
+            script=jquery_scripts.GET_FIRST,
+        )
+
+    @prepare_result
+    def last(self) -> webelement.WebElement | None:
+        """Get the last child element of the default element.
+
+        Returns:
+            The last child WebElement or None if no children exist.
+        """
+        return self.query(
+            script=jquery_scripts.GET_LAST,
+        )
+
+    # Element state/attribute methods
+    def has_class(self, class_name: str) -> bool:
+        """Check if element has a specific class.
 
         Args:
-            element: Element to check.
+            class_name: Class name to look for.
+
+        Returns:
+            bool: True if element has the class, False otherwise.
+        """
+        return self.query(
+            script=jquery_scripts.HAS_CLASS.format(class_name=class_name),
+        )
+
+    def matches_selector(self, selector: str) -> bool:
+        """Check if element matches a selector.
+
+        Args:
+            selector: jQuery selector to match against.
+
+        Returns:
+            bool: True if element matches selector, False otherwise.
+        """
+        return self.query(
+            script=jquery_scripts.MATCHES_SELECTOR.format(selector=selector),
+        )
+
+    def has(self, selector: str) -> bool:
+        """Check if element has descendants matching selector.
+
+        Args:
+            selector: jQuery selector to match descendants.
+
+        Returns:
+            bool: True if element has matching descendants, False otherwise.
+        """
+        return self.query(
+            script=jquery_scripts.HAS_DESCENDANTS.format(selector=selector),
+        )
+
+    def attr(self, attribute_name: str) -> str | None:
+        """Get attribute value of element.
+
+        Args:
+            attribute_name: Name of the attribute.
+
+        Returns:
+            The attribute value or None if not found.
+        """
+        return self.query(
+            script=jquery_scripts.GET_ATTR.format(attribute_name=attribute_name),
+        )
+
+    def text(self) -> str:
+        """Get text content of element.
+
+        Returns:
+            The text content of the element.
+        """
+        return self.query(
+            script=jquery_scripts.GET_TEXT,
+        )
+
+    def html(self) -> str:
+        """Get HTML content of element.
+
+        Returns:
+            The HTML content of the element.
+        """
+        return self.query(
+            script=jquery_scripts.GET_HTML,
+        )
+
+    def is_visible(self) -> bool:
+        """Check if element is visible.
 
         Returns:
             bool: True if element is visible, False otherwise.
         """
         return self.query(
             script=jquery_scripts.IS_VISIBLE,
-            element=element,
         )
 
-    def is_checked(self, element: webelement.WebElement) -> bool:
+    def is_checked(self) -> bool:
         """Check if checkbox/radio is checked.
-
-        Args:
-            element: Element to check.
 
         Returns:
             bool: True if element is checked, False otherwise.
         """
         return self.query(
             script=jquery_scripts.IS_CHECKED,
-            element=element,
         )
 
-    def is_disabled(self, element: webelement.WebElement) -> bool:
+    def is_disabled(self) -> bool:
         """Check if element is disabled.
-
-        Args:
-            element: Element to check.
 
         Returns:
             bool: True if element is disabled, False otherwise.
         """
         return self.query(
             script=jquery_scripts.IS_DISABLED,
-            element=element,
         )
+
+    # Text-based search methods
+    @prepare_result
+    def find_elements_with_text(
+        self, text: str, selector: str = "*", *, first_match: bool = False
+    ) -> list[webelement.WebElement] | webelement.WebElement | None:
+        """Find elements containing specific text.
+
+        Args:
+            text: Text to search for.
+            selector: jQuery selector to filter elements.
+            first_match: Whether to return only the first match.
+
+        Returns:
+            Either a single WebElement, a list of WebElements, or None if no matches found.
+        """
+        method = ".first()" if first_match else ""
+        script = jquery_scripts.FIND_ELEMENTS_WITH_TEXT.format(selector=selector, text=text, method=method)
+        return self.query(script=script)
+
+    @prepare_result
+    def find_lowest_element_with_text(
+        self, text: str, selector: str = "*", *, exact_match: bool = False
+    ) -> webelement.WebElement | None:
+        """Find the lowest element in the DOM tree containing specific text.
+
+        Args:
+            text: Text to search for.
+            selector: jQuery selector to filter elements.
+            exact_match: Whether to require an exact text match.
+
+        Returns:
+            The lowest matching WebElement or None if not found.
+        """
+        script = (
+            jquery_scripts.FIND_LOWEST_ELEMENT_WITH_EXACT_TEXT
+            if exact_match
+            else jquery_scripts.FIND_LOWEST_ELEMENT_WITH_TEXT
+        ).format(selector=selector, text=text)
+
+        return self.query(script=script)
+
+    @prepare_result
+    def find_elements_with_selector_and_text(
+        self,
+        selector: str,
+        text: str,
+        *,
+        first_match: bool = False,
+        exact_match: bool = False,
+    ) -> list[webelement.WebElement] | webelement.WebElement | None:
+        """Find elements matching both selector and text criteria.
+
+        Args:
+            selector: jQuery selector to filter elements.
+            text: Text to search for.
+            first_match: Whether to return only the first match.
+            exact_match: Whether to require an exact text match.
+
+        Returns:
+            Either a single WebElement, a list of WebElements, or None if no matches found.
+        """
+        method = ".first()" if first_match else ""
+        script = (
+            jquery_scripts.FIND_ELEMENTS_WITH_SELECTOR_AND_EXACT_TEXT
+            if exact_match
+            else jquery_scripts.FIND_ELEMENTS_WITH_SELECTOR_AND_TEXT
+        ).format(selector=selector, text=text, method=method)
+
+        return self.query(script=script)

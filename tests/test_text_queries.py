@@ -11,7 +11,8 @@ def test_find_elements_with_text(browser):
 
     elements = browser.find_elements_with_text("Sign in")
     assert elements, "Should find elements containing 'Sign in' text"
-    assert len(elements) > 0
+    assert len(elements) > 0, "Should find at least one element"
+    assert any(e.text() == "Sign in" for e in elements), "At least one element should have exact text 'Sign in'"
 
 
 def test_find_elements_with_text_first_match(browser):
@@ -19,9 +20,9 @@ def test_find_elements_with_text_first_match(browser):
     wait = WebDriverWait(browser.driver, 10)
     wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
-    element = browser.find_elements_with_text("Sign in", selector=".nav-link", first_match=True)
+    element = browser.find_elements_with_text("Sign in", selector="a.nav-link", first_match=True)
     assert element, "Should find first element containing 'Sign in' text"
-    assert element.text == "Sign in"
+    assert element.text() == "Sign in", "Element should have exact text 'Sign in'"
 
 
 def test_find_elements_with_text_no_matches(browser):
@@ -40,7 +41,7 @@ def test_find_lowest_element_with_text(browser):
 
     element = browser.find_lowest_element_with_text("Sign in")
     assert element, "Should find lowest element containing 'Sign in' text"
-    assert element.text == "Sign in"
+    assert element.text() == "Sign in", "Element should have exact text 'Sign in'"
 
 
 def test_find_lowest_element_with_text_exact_match(browser):
@@ -50,7 +51,7 @@ def test_find_lowest_element_with_text_exact_match(browser):
 
     element = browser.find_lowest_element_with_text("Sign in", exact_match=True)
     assert element, "Should find lowest element with exact 'Sign in' text"
-    assert element.text == "Sign in"
+    assert element.text() == "Sign in", "Element should have exact text 'Sign in'"
 
 
 def test_find_lowest_element_with_text_no_matches(browser):
@@ -69,7 +70,8 @@ def test_find_elements_with_selector_and_text(browser):
 
     elements = browser.find_elements_with_selector_and_text("a", "Sign in")
     assert elements, "Should find anchor elements containing 'Sign in' text"
-    assert len(elements) > 0
+    assert len(elements) > 0, "Should find at least one element"
+    assert any(e.text() == "Sign in" for e in elements), "At least one element should have exact text 'Sign in'"
 
 
 def test_find_elements_with_selector_and_text_exact_match(browser):
@@ -79,7 +81,8 @@ def test_find_elements_with_selector_and_text_exact_match(browser):
 
     elements = browser.find_elements_with_selector_and_text("a", "Sign in", exact_match=True)
     assert elements, "Should find anchor elements with exact 'Sign in' text"
-    assert len(elements) > 0
+    assert len(elements) > 0, "Should find at least one element"
+    assert any(e.text() == "Sign in" for e in elements), "At least one element should have exact text 'Sign in'"
 
 
 def test_find_elements_with_selector_and_text_first_match(browser):
@@ -89,7 +92,7 @@ def test_find_elements_with_selector_and_text_first_match(browser):
 
     element = browser.find_elements_with_selector_and_text("a", "Sign in", first_match=True)
     assert element, "Should find first anchor element containing 'Sign in' text"
-    assert element.text == "Sign in"
+    assert element.text() == "Sign in", "Element should have exact text 'Sign in'"
 
 
 def test_find_elements_with_selector_and_text_no_matches(browser):
