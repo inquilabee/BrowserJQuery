@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BrowserJQuery Test Page</title>
+    <style>
+        .test-class { color: blue; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="container" class="test-class">
+        <header>
+            <nav>
+                <a href="#" class="nav-link">Sign in</a>
+                <a href="#" class="nav-link">Home</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="content">
+                <h1>Test Page</h1>
+                <p>This is a test paragraph with <span>nested</span> elements.</p>
+
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="Username">
+                    <input type="password" id="password" placeholder="Password">
+                    <input type="checkbox" id="remember" checked>
+                    <label for="remember">Remember me</label>
+                </div>
+
+                <div class="form-group">
+                    <input type="radio" name="option" id="option1" checked>
+                    <label for="option1">Option 1</label>
+                    <input type="radio" name="option" id="option2">
+                    <label for="option2">Option 2</label>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" disabled>Submit</button>
+                    <button type="reset">Reset</button>
+                </div>
+            </section>
+
+            <aside class="sidebar">
+                <ul>
+                    <li>Item 1</li>
+                    <li>Item 2</li>
+                    <li>Item 3</li>
+                </ul>
+            </aside>
+        </main>
+
+        <footer>
+            <p class="hidden">Hidden footer text</p>
+            <p>Visible footer text</p>
+        </footer>
+    </div>
+</body>
+</html>
