@@ -1,6 +1,14 @@
 # BrowserJQuery
 
-A Python library for using jQuery with Selenium WebDriver. This library provides a convenient way to interact with web elements using jQuery selectors and methods in your Selenium tests.
+A Python library that seamlessly integrates jQuery functionality with Selenium WebDriver. This library provides a convenient and powerful way to interact with web elements using jQuery selectors and methods in your Selenium tests, making web automation more intuitive and efficient.
+
+## Features
+
+- Use jQuery selectors to find elements
+- Chain jQuery methods for complex element interactions
+- Built-in support for common jQuery operations
+- Type-safe implementation with mypy support
+- Comprehensive test coverage
 
 ## Installation
 
@@ -14,7 +22,7 @@ For development, install with test dependencies:
 pip install "browserjquery[dev]"
 ```
 
-## Usage
+## Quick Start
 
 ```python
 from selenium import webdriver
@@ -47,41 +55,37 @@ all_parents = jquery.parents(element)
 closest = jquery.find_closest_ancestor("div.container", element)
 ```
 
-## Development
+## Advanced Usage
 
-### Running Tests
+### Chaining Methods
 
-```bash
-# Run all tests
-pytest
-
-# Run tests with coverage report
-pytest --cov=browserjquery
-
-# Run specific test file
-pytest tests/test_jquery.py
+```python
+# Chain multiple jQuery operations
+result = jquery.find("div.item").filter(".active").find("span").text()
 ```
 
-### Code Style
+### Working with Forms
 
-The project uses:
-- Black for code formatting
-- isort for import sorting
-- mypy for type checking
+```python
+# Fill form fields
+jquery.find("input[name='username']").val("testuser")
+jquery.find("input[name='password']").val("password123")
 
-To format code:
-
-```bash
-black .
-isort .
+# Submit form
+jquery.find("form").submit()
 ```
 
-To check types:
+### Event Handling
 
-```bash
-mypy .
+```python
+# Attach event handlers
+jquery.find("button").on("click", "alert('clicked!')")
 ```
+
+## Contributing
+
+Contributions are welcome! Feel free to submit a pull request.
 
 ## License
 
-MIT License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

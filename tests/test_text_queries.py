@@ -19,7 +19,7 @@ def test_find_elements_with_text_first_match(browser):
     wait = WebDriverWait(browser.driver, 10)
     wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
-    element = browser.find_elements_with_text("Sign in", first_match=True)
+    element = browser.find_elements_with_text("Sign in", selector=".nav-link", first_match=True)
     assert element, "Should find first element containing 'Sign in' text"
     assert element.text == "Sign in"
 
