@@ -1,56 +1,87 @@
-# BrowserJQuery: Streamline Selenium with jQuery
+# BrowserJQuery
 
-Enhance your Selenium-driven web automation tasks with **BrowserJQuery**, a Python package that empowers you to use jQuery effortlessly. This straightforward yet robust package simplifies the execution of jQuery scripts and includes built-in utility methods.
+A Python library for using jQuery with Selenium WebDriver. This library provides a convenient way to interact with web elements using jQuery selectors and methods in your Selenium tests.
 
-# Installation
-
-Get started quickly by installing **BrowserJQuery** from PyPI:
+## Installation
 
 ```bash
 pip install browserjquery
 ```
 
-# Usage
+For development, install with test dependencies:
 
-Here's how you can harness the power of **BrowserJQuery** in your Selenium scripts:
-
-```python
-import time
-from selenium.webdriver import Chrome
-from browserjquery import BrowserJQuery
-
-# Initialize a Selenium driver
-driver = Chrome()
-
-# Navigate to a website
-driver.get("https://www.yahoo.com")
-
-# Pause to allow page loading (you can adjust the duration)
-time.sleep(10)
-
-# Create a jQuery object for the driver
-jquery = BrowserJQuery(driver)
-
-# Execute a jQuery script
-jquery.execute("""return $("div.stream-item")""")
-
-# Use the jQuery object to find and select items
-stream = jquery(".stream-item")
-
-# Access methods and attributes of the jQuery object
-print(jquery.document)
-
-# Find elements within the selected items
-print(jquery.find(".stream-item a"))
-
-# Find elements with specific text
-print(jquery.find_elements_with_text("Hello"))
-
-# Find elements with specific text within a specific element
-print(jquery.find_elements_with_text("Hello", element=stream[0]))
-
-# Get the parent element of a selected item
-print(jquery.parent(stream[0]))
+```bash
+pip install "browserjquery[dev]"
 ```
 
-With **BrowserJQuery**, you can effortlessly integrate jQuery into your Selenium workflows, making web automation more efficient and powerful.
+## Usage
+
+```python
+from selenium import webdriver
+from browserjquery import BrowserJQuery
+
+# Initialize the WebDriver
+driver = webdriver.Chrome()
+
+# Create a BrowserJQuery instance
+jquery = BrowserJQuery(driver)
+
+# Navigate to a page
+driver.get("https://example.com")
+
+# Find elements using jQuery selectors
+elements = jquery.find("div.test-class")
+first_element = jquery.find("div.test-class", first_match=True)
+
+# Find elements containing specific text
+elements_with_text = jquery.find_elements_with_text("Hello World")
+
+# Check if an element has a specific class
+has_class = jquery.has_class(element, "active")
+
+# Get parent elements
+parent = jquery.parent(element)
+all_parents = jquery.parents(element)
+
+# Find closest ancestor with specific selector
+closest = jquery.find_closest_ancestor("div.container", element)
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=browserjquery
+
+# Run specific test file
+pytest tests/test_jquery.py
+```
+
+### Code Style
+
+The project uses:
+- Black for code formatting
+- isort for import sorting
+- mypy for type checking
+
+To format code:
+
+```bash
+black .
+isort .
+```
+
+To check types:
+
+```bash
+mypy .
+```
+
+## License
+
+MIT License

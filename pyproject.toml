@@ -1,61 +1,76 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "browserjquery"
+version = "0.1.1"
+description = "A Python library for using jQuery with Selenium WebDriver"
+readme = "README.md"
+authors = ["Vishal Kumar Mishra <vishal.k.mishra2@gmail.com>"]
+license = "MIT"
+keywords = ["selenium", "selenium python", "browserjquery", "browser automation", "python jquery"]
+homepage = "https://github.com/inquilabee/BrowserJQuery"
+repository = "https://github.com/inquilabee/BrowserJQuery"
+packages = [{include = "browserjquery"}]
+
+[tool.poetry.dependencies]
+python = "^3.13"
+selenium = "^4.12.0"
+django-environ = "^0.11.2"
+python-dotenv = "^1.0.0"
+pyyaml = "^6.0.1"
+ruff = "^0.11.13"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+black = "^23.0.0"
+isort = "^5.0.0"
+mypy = "^1.0.0"
+poetry = "^1.6.1"
+
+[tool.poetry.group.doc.dependencies]
+sphinx = "^7.2.6"
+sphinx-autobuild = "^2021.3.14"
+nbsphinx = "^0.9.3"
+sphinx-autoapi = "^2.1.1"
+sphinx-rtd-theme = "^1.3.0"
+myst-parser = "^2.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=browserjquery"
+minversion = "6.0"
+
 [tool.black]
 line-length = 120
-target-version = ['py311']
-include = '\.pyi?$'
-exclude = '''
-/(
-  \.toml
-  |\.sh
-  |\.git
-  |\.ini
-  |\.tox
-  |Dockerfile
-  |Jenkinfile
-  | _build
-  | dist
-)/
-'''
+target-version = ["py312"]
 
-# ==== isort ====
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = [
-    "config",
-    "apps",
-]
+known_first_party = ["config", "apps"]
 skip = []
 skip_glob = []
 
-# ==== pytest ====
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "--ds=config.settings --reuse-db"
-python_files = [
-    "tests.py",
-    "test_*.py",
-]
-
-# ==== mypy ====
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
 check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true
-warn_unused_configs = true
-
 
 [tool.ruff]
-# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F"]
 ignore = []
-
-# Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
 unfixable = []
-
-# Exclude a variety of commonly ignored directories.
 exclude = [
     ".bzr",
     ".direnv",
@@ -79,52 +94,13 @@ exclude = [
     "node_modules",
     "venv",
 ]
-
 line-length = 120
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 target-version = "py310"
 
 [tool.ruff.mccabe]
-# Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
 
 [tool.bandit]
 exclude_dirs = [".tox"]
-# tests = ["B201", "B301"]
 skips = ["B113"]
-
-[tool.poetry]
-name = "browserjquery"
-version = "0.1.1"
-description = "Query using Jquery on selenium driver."
-authors = ["Vishal Kumar Mishra <vishal.k.mishra2@gmail.com>"]
-keywords = ["selenium", "selenium python", "browserjquery", "browser automation", "python jquery"]
-homepage = "https://github.com/inquilabee/BrowserJQuery"
-repository = "https://github.com/inquilabee/BrowserJQuery"
-license = "MIT"
-readme = "README.md"
-
-
-[tool.poetry.dependencies]
-python = "^3.10"
-selenium = "^4.12.0"
-django-environ = "^0.11.2"
-python-dotenv = "^1.0.0"
-pyyaml = "^6.0.1"
-
-
-[tool.poetry.group.dev.dependencies]
-poetry = "^1.6.1"
-
-
-[tool.poetry.group.doc.dependencies]
-sphinx = "^7.2.6"
-sphinx-autobuild = "^2021.3.14"
-nbsphinx = "^0.9.3"
-sphinx-autoapi = "^2.1.1"
-sphinx-rtd-theme = "^1.3.0"
-myst-parser = "^2.0.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

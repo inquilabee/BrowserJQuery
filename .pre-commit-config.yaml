@@ -1,5 +1,5 @@
-exclude: '^docs/|/migrations/'
-default_stages: [ commit ]
+exclude: "^docs/|/migrations/"
+default_stages: [commit]
 fail_fast: false
 
 repos:
@@ -19,10 +19,10 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.7.0
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
-        args: [ --py311-plus ]
+        args: [--py311-plus]
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
@@ -31,37 +31,25 @@ repos:
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.280
+    rev: v0.11.13
     hooks:
       - id: ruff
-        args: [ --fix, --exit-non-zero-on-fix ]
-        types_or: [ python, pyi, jupyter ]
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi, jupyter]
 
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 25.1.0
     hooks:
       - id: black
 
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
+    rev: 1.8.3
     hooks:
       - id: bandit
-        args: [ "-c", "bandit.yaml" ]
-
-  - repo: https://github.com/sourcery-ai/sourcery
-    # Source: https://docs.sourcery.ai/Guides/Getting-Started/Pre-Commit/
-    # https://sourcery.ai/blog/python-best-practices/
-    rev: v1.6.0
-    hooks:
-      - id: sourcery
-        # only check the files which have changed: does not work on first commit
-        args: [ --diff=git diff HEAD, --no-summary ]
-        # args: [ --diff=git diff HEAD, --fix, --no-summary ]
-        # args: [ --fix, --no-summary ]
-
+        args: ["-c", "bandit.yaml"]
 
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 ci:
   autoupdate_schedule: weekly
-  skip: [ ]
+  skip: []
   submodules: false
