@@ -2,7 +2,7 @@ import contextlib
 import functools
 import time
 from collections.abc import Callable
-from typing import Any, Union
+from typing import Any, Generic, TypeVar, Union
 
 from selenium import webdriver
 from selenium.webdriver.remote import webelement
@@ -11,13 +11,81 @@ from browserjquery import jquery_scripts, settings
 
 logger = settings.getLogger(__name__)
 
-ResultType = Union[list[webelement.WebElement], webelement.WebElement, None]
-WrappedResultType = Union[list[Union["BrowserJQuery", str]], "BrowserJQuery", str, None]
+T = TypeVar("T", bound=Union[webelement.WebElement, str])
+ResultType = Union[list[T], T, None]
+WrappedResultType = Union["BrowserJQueryCollection", "BrowserJQuery", str, None]
+
+
+class BrowserJQueryCollection(Generic[T]):
+    """A collection of elements that can be filtered and transformed."""
+
+    def __init__(self, driver: webdriver.Chrome | webdriver.Firefox, elements: list[T]):
+        """Initialize a collection of elements.
+
+        Args:
+            driver: The webdriver instance.
+            elements: List of elements in the collection.
+        """
+        self.driver = driver
+        self.elements = elements
+
+    def __len__(self) -> int:
+        """Get the number of elements in the collection."""
+        return len(self.elements)
+
+    def __iter__(self):
+        """Iterate over the elements in the collection."""
+        for element in self.elements:
+            if isinstance(element, str):
+                yield element
+            else:
+                yield BrowserJQuery(self.driver, default_element=element)
+
+    def __getitem__(self, index: int) -> Union["BrowserJQuery", str]:
+        """Get an element by index."""
+        element = self.elements[index]
+        if isinstance(element, str):
+            return element
+        return BrowserJQuery(self.driver, default_element=element)
+
+    def first(self) -> Union["BrowserJQuery", str, None]:
+        """Get the first element in the collection.
+
+        Returns:
+            A BrowserJQuery instance wrapping the first element, or None if empty.
+        """
+        if not self.elements:
+            return None
+        element = self.elements[0]
+        if isinstance(element, str):
+            return element
+        return BrowserJQuery(self.driver, default_element=element)
+
+    def last(self) -> Union["BrowserJQuery", str, None]:
+        """Get the last element in the collection.
+
+        Returns:
+            A BrowserJQuery instance wrapping the last element, or None if empty.
+        """
+        if not self.elements:
+            return None
+        element = self.elements[-1]
+        if isinstance(element, str):
+            return element
+        return BrowserJQuery(self.driver, default_element=element)
+
+    def items(self) -> list[Union["BrowserJQuery", str]]:
+        """Get all elements in the collection.
+
+        Returns:
+            List of elements wrapped in BrowserJQuery instances.
+        """
+        return [BrowserJQuery(self.driver, default_element=e) if not isinstance(e, str) else e for e in self.elements]
 
 
 def prepare_result(func: Callable[..., ResultType]) -> Callable[..., WrappedResultType]:
-    """Decorator to prepare query results based on whether first match is requested.
-    If result is a WebElement or list of WebElements, wraps it in a new BrowserJQuery instance.
+    """Decorator to prepare query results.
+    If result is a WebElement or list of WebElements, wraps it appropriately.
     Text elements are left as is.
 
     Args:
@@ -29,18 +97,10 @@ def prepare_result(func: Callable[..., ResultType]) -> Callable[..., WrappedResu
 
     @functools.wraps(func)
     def wrapper(self: "BrowserJQuery", *args: Any, **kwargs: Any) -> WrappedResultType:
-        first = kwargs.get("first_match", False)
         result = func(self, *args, **kwargs)
 
         if isinstance(result, list):
-            if first:
-                result = result[0] if result else None
-            else:
-                # Wrap each element in the list with BrowserJQuery
-                return [
-                    BrowserJQuery(self.driver, default_element=item) if not isinstance(item, str) else item
-                    for item in result
-                ]
+            return BrowserJQueryCollection(self.driver, result)
 
         if result is not None and not isinstance(result, str):
             return BrowserJQuery(self.driver, default_element=result)
@@ -165,33 +225,27 @@ class BrowserJQuery:
             script: The jQuery script to execute.
             element: The WebElement to execute the script on. If None, uses default_element.
             *args: Additional arguments to pass to the script.
-            **kwargs: Additional keyword arguments. Note: first_match is handled separately.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             The result of the jQuery script execution.
         """
         element = element or self.default_element
         logger.info(f"Executing script : {script} on element: {element}")
-        # Create a copy of kwargs without first_match for execute_script
-        script_kwargs = {k: v for k, v in kwargs.items() if k != "first_match"}
-        return self.execute(script, element, *args, **script_kwargs)
+        return self.execute(script, element, *args, **kwargs)
 
     # Element finding methods
     @prepare_result
-    def find(
-        self, selector: str, *, first_match: bool = False
-    ) -> list[webelement.WebElement] | webelement.WebElement | None:
+    def find(self, selector: str) -> list[webelement.WebElement] | webelement.WebElement | None:
         """Find elements using jQuery selector.
 
         Args:
             selector: jQuery selector to find elements.
-            first_match: Whether to return only the first match.
 
         Returns:
-            Either a single WebElement, a list of WebElements, or None if no matches found.
+            A BrowserJQueryCollection of matching elements.
         """
-        first_match = first_match or selector.startswith("#")
-        method = ".first()" if first_match else ""
+        method = ".first()" if selector.startswith("#") else ""
         return self.query(
             script=jquery_scripts.FIND_ELEMENTS.format(selector=selector, method=method),
         )
@@ -258,12 +312,11 @@ class BrowserJQuery:
         )
 
     @prepare_result
-    def next(self, selector: str | None = None, first_match: bool = True) -> webelement.WebElement | None:
+    def next(self, selector: str | None = None) -> webelement.WebElement | None:
         """Get next sibling element.
 
         Args:
             selector: Optional selector to filter next sibling.
-            first_match: Whether to return only the first match (default: True).
 
         Returns:
             The next sibling WebElement or None if not found.
@@ -271,16 +324,14 @@ class BrowserJQuery:
         script = jquery_scripts.GET_NEXT.format(selector=selector) if selector else jquery_scripts.GET_NEXT_ALL
         return self.query(
             script=script,
-            first_match=first_match,
         )
 
     @prepare_result
-    def prev(self, selector: str | None = None, first_match: bool = True) -> webelement.WebElement | None:
+    def prev(self, selector: str | None = None) -> webelement.WebElement | None:
         """Get previous sibling element.
 
         Args:
             selector: Optional selector to filter previous sibling.
-            first_match: Whether to return only the first match (default: True).
 
         Returns:
             The previous sibling WebElement or None if not found.
@@ -288,7 +339,6 @@ class BrowserJQuery:
         script = jquery_scripts.GET_PREV.format(selector=selector) if selector else jquery_scripts.GET_PREV_ALL
         return self.query(
             script=script,
-            first_match=first_match,
         )
 
     def items(self) -> list[webelement.WebElement]:
@@ -429,20 +479,18 @@ class BrowserJQuery:
     # Text-based search methods
     @prepare_result
     def find_elements_with_text(
-        self, text: str, selector: str = "*", *, first_match: bool = False
+        self, text: str, selector: str = "*"
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
         """Find elements containing specific text.
 
         Args:
             text: Text to search for.
             selector: jQuery selector to filter elements.
-            first_match: Whether to return only the first match.
 
         Returns:
-            Either a single WebElement, a list of WebElements, or None if no matches found.
+            A BrowserJQueryCollection of matching elements.
         """
-        method = ".first()" if first_match else ""
-        script = jquery_scripts.FIND_ELEMENTS_WITH_TEXT.format(selector=selector, text=text, method=method)
+        script = jquery_scripts.FIND_ELEMENTS_WITH_TEXT.format(selector=selector, text=text, method="")
         return self.query(script=script)
 
     @prepare_result
@@ -473,7 +521,6 @@ class BrowserJQuery:
         selector: str,
         text: str,
         *,
-        first_match: bool = False,
         exact_match: bool = False,
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
         """Find elements matching both selector and text criteria.
@@ -481,17 +528,15 @@ class BrowserJQuery:
         Args:
             selector: jQuery selector to filter elements.
             text: Text to search for.
-            first_match: Whether to return only the first match.
             exact_match: Whether to require an exact text match.
 
         Returns:
-            Either a single WebElement, a list of WebElements, or None if no matches found.
+            A BrowserJQueryCollection of matching elements.
         """
-        method = ".first()" if first_match else ""
         script = (
             jquery_scripts.FIND_ELEMENTS_WITH_SELECTOR_AND_EXACT_TEXT
             if exact_match
             else jquery_scripts.FIND_ELEMENTS_WITH_SELECTOR_AND_TEXT
-        ).format(selector=selector, text=text, method=method)
+        ).format(selector=selector, text=text, method="")
 
         return self.query(script=script)

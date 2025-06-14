@@ -10,7 +10,7 @@ def test_fixtures(browser):
     wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
     # Verify we can find elements
-    container = browser.find("#container", first_match=True)
+    container = browser.find("#container").first()
     assert container, "Should find container element"
 
     # Verify jQuery is working

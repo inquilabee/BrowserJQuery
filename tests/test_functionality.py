@@ -10,7 +10,7 @@ def test_has_class(browser):
     wait.until(EC.presence_of_element_located((By.ID, "container")))
 
     # Find the element using BrowserJQuery
-    element = browser.find("#container", first_match=True)
+    element = browser.find("#container").first()
     assert element, "Should find container element"
 
     # Test the class
@@ -18,33 +18,33 @@ def test_has_class(browser):
 
 
 def test_matches_selector(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     assert element.matches_selector("a"), "Should match anchor selector"
 
 
 def test_has_descendants(browser):
-    element = browser.find("body", first_match=True)
+    element = browser.find("body").first()
     assert element, "Should find body element"
     assert element.has("a"), "Should have anchor descendants"
 
 
 def test_attr(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     href = element.attr("href")
     assert href == "#", "Href should be #"
 
 
 def test_text(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     text = element.text()
     assert text == "Sign in", "Should have correct text content"
 
 
 def test_html(browser):
-    element = browser.find("body", first_match=True)
+    element = browser.find("body").first()
     assert element, "Should find body element"
     html = element.html()
     assert html, "Should have HTML content"
@@ -52,7 +52,7 @@ def test_html(browser):
 
 
 def test_children(browser):
-    element = browser.find("body", first_match=True)
+    element = browser.find("body").first()
     assert element, "Should find body element"
     children = element.children()
     assert children, "Should have children"
@@ -60,7 +60,7 @@ def test_children(browser):
 
 
 def test_children_with_selector(browser):
-    element = browser.find("nav", first_match=True)
+    element = browser.find("nav").first()
     assert element, "Should find nav element"
     children = element.children("a")
     assert children, "Should have anchor children"
@@ -68,7 +68,7 @@ def test_children_with_selector(browser):
 
 
 def test_siblings(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     siblings = element.siblings()
     assert siblings, "Should have siblings"
@@ -76,7 +76,7 @@ def test_siblings(browser):
 
 
 def test_siblings_with_selector(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     siblings = element.siblings("a")
     assert siblings, "Should have sibling anchors"
@@ -84,7 +84,7 @@ def test_siblings_with_selector(browser):
 
 
 def test_next(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     next_element = element.next()
     assert next_element, "Should have next element"
@@ -92,7 +92,7 @@ def test_next(browser):
 
 
 def test_next_with_selector(browser):
-    element = browser.find("a", first_match=True)
+    element = browser.find("a").first()
     assert element, "Should find an anchor element"
     next_element = element.next("a")
     assert next_element, "Should have next anchor element"
@@ -100,7 +100,7 @@ def test_next_with_selector(browser):
 
 
 def test_prev(browser):
-    element = browser.find("a.nav-link:nth-child(2)", first_match=True)  # Second nav link
+    element = browser.find("a.nav-link:nth-child(2)").first()  # Second nav link
     assert element, "Should find an anchor element"
     prev_element = element.prev()
     assert prev_element, "Should have previous element"
@@ -108,7 +108,7 @@ def test_prev(browser):
 
 
 def test_prev_with_selector(browser):
-    element = browser.find("a.nav-link:nth-child(2)", first_match=True)  # Second nav link
+    element = browser.find("a.nav-link:nth-child(2)").first()  # Second nav link
     assert element, "Should find an anchor element"
     prev_element = element.prev("a")
     assert prev_element, "Should have previous anchor element"
@@ -116,18 +116,18 @@ def test_prev_with_selector(browser):
 
 
 def test_is_visible(browser):
-    element = browser.find("p:not(.hidden)", first_match=True)
+    element = browser.find("p:not(.hidden)").first()
     assert element, "Should find a visible paragraph"
     assert element.is_visible(), "Element should be visible"
 
 
 def test_is_checked(browser):
-    element = browser.find("#remember", first_match=True)
+    element = browser.find("#remember").first()
     assert element, "Should find checkbox element"
     assert element.is_checked(), "Checkbox should be checked"
 
 
 def test_is_disabled(browser):
-    element = browser.find("button[type='submit']", first_match=True)
+    element = browser.find("button[type='submit']").first()
     assert element, "Should find submit button"
     assert element.is_disabled(), "Button should be disabled"
