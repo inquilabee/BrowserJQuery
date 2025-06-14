@@ -1,5 +1,8 @@
 import contextlib
+import functools
 import time
+from collections.abc import Callable
+from typing import Any, Union
 
 from selenium import webdriver
 from selenium.webdriver.remote import webelement
@@ -8,6 +11,32 @@ from browserjquery import jquery_scripts, settings
 from browserjquery.text_queries import TextQuery
 
 logger = settings.getLogger(__name__)
+
+ResultType = Union[list[webelement.WebElement], webelement.WebElement, None]
+
+
+def prepare_result(func: Callable[..., ResultType]) -> Callable[..., ResultType]:
+    """Decorator to prepare query results based on whether first match is requested.
+
+    Args:
+        func: The function to decorate.
+
+    Returns:
+        The decorated function that processes its result.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> ResultType:
+        first = kwargs.pop("first_match", False)
+        result = func(*args, **kwargs)
+
+        if isinstance(result, list):
+            if first:
+                return result[0] if result else None
+            return result
+        return result
+
+    return wrapper
 
 
 class BrowserJQuery(TextQuery):
@@ -128,25 +157,7 @@ class BrowserJQuery(TextQuery):
             return True
         return False
 
-    @staticmethod
-    def _prepare_result(  # type: ignore
-        result: list[webelement.WebElement] | webelement.WebElement | None, first: bool
-    ) -> list[webelement.WebElement] | webelement.WebElement | None:
-        """Prepare the result based on whether first match is requested.
-
-        Args:
-            result: The query result to process.
-            first: Whether to return only the first match.
-
-        Returns:
-            The processed result, either a single element or a list of elements.
-        """
-        if isinstance(result, list):
-            if first:
-                return result[0] if result else None
-            return result
-        return result
-
+    @prepare_result
     def find(
         self, selector: str, element: webelement.WebElement | None = None, *, first_match: bool = False
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
@@ -166,14 +177,12 @@ class BrowserJQuery(TextQuery):
             return None
         method = ".first()" if first_match else ""
 
-        return self._prepare_result(
-            self.query(
-                script=jquery_scripts.FIND_ELEMENTS.format(selector=selector, method=method),
-                element=element,
-            ),
-            first=first_match,
+        return self.query(
+            script=jquery_scripts.FIND_ELEMENTS.format(selector=selector, method=method),
+            element=element,
         )
 
+    @prepare_result
     def find_closest_ancestor(self, selector: str, element: webelement.WebElement) -> webelement.WebElement | None:
         """Find the closest ancestor matching the selector.
 
@@ -184,12 +193,7 @@ class BrowserJQuery(TextQuery):
         Returns:
             The closest matching ancestor WebElement or None if not found.
         """
-        result = self._prepare_result(
-            self.query(script=jquery_scripts.GET_CLOSEST.format(selector=selector), element=element), first=True
-        )
-        if isinstance(result, list):
-            return result[0] if result else None
-        return result
+        return self.query(script=jquery_scripts.GET_CLOSEST.format(selector=selector), element=element)
 
     def has_class(self, element: webelement.WebElement, class_name: str) -> bool:
         """Check if element has a specific class.
@@ -339,6 +343,7 @@ class BrowserJQuery(TextQuery):
             element=element,
         )
 
+    @prepare_result
     def next(
         self, element: webelement.WebElement, selector: str | None = None
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
@@ -352,14 +357,12 @@ class BrowserJQuery(TextQuery):
             Either a single WebElement, a list of WebElements, or None if not found.
         """
         script = jquery_scripts.GET_NEXT.format(selector=selector) if selector else jquery_scripts.GET_NEXT_ALL
-        return self._prepare_result(
-            self.query(
-                script=script,
-                element=element,
-            ),
-            first=True,
+        return self.query(
+            script=script,
+            element=element,
         )
 
+    @prepare_result
     def prev(
         self, element: webelement.WebElement, selector: str | None = None
     ) -> list[webelement.WebElement] | webelement.WebElement | None:
@@ -373,12 +376,9 @@ class BrowserJQuery(TextQuery):
             Either a single WebElement, a list of WebElements, or None if not found.
         """
         script = jquery_scripts.GET_PREV.format(selector=selector) if selector else jquery_scripts.GET_PREV_ALL
-        return self._prepare_result(
-            self.query(
-                script=script,
-                element=element,
-            ),
-            first=True,
+        return self.query(
+            script=script,
+            element=element,
         )
 
     def is_visible(self, element: webelement.WebElement) -> bool:
